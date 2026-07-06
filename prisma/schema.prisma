@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model KanaCharacter {
+  id       Int    @id @default(autoincrement())
+  char     String
+  romaji   String
+  kanaType String // "hiragana" | "katakana"
+  group    String // "vowel" | "k" | "s" | "t" | "n" | "h" | "m" | "y" | "r" | "w" | "special"
+
+  @@unique([char, kanaType])
+  @@index([kanaType])
+}
+
+model KanaSentence {
+  id             Int    @id @default(autoincrement())
+  text           String
+  reading        String
+  meaning        String
+  kanaType       String // "hiragana" | "katakana"
+  missingIndices String // JSON array e.g. "[3, 5]"
+  blanks         String // JSON array e.g. "[\"よ\", \"に\"]"
+  createdAt      DateTime @default(now())
+
+  @@index([kanaType])
+}
