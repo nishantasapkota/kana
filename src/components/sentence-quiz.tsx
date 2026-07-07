@@ -9,6 +9,8 @@ import { CheckCircle2, XCircle, BookOpen, Loader2 } from "lucide-react";
 
 export function SentenceQuiz() {
   const { sentenceQuiz, answerSentenceQuestion } = useAppStore();
+  const setView = useAppStore((s) => s.setView);
+  const setEditSentenceId = useAppStore((s) => s.setEditSentenceId);
   const {
     currentSentence,
     currentBlankIndex,
@@ -37,9 +39,6 @@ export function SentenceQuiz() {
       </div>
     );
   }
-
-  const setView = useAppStore((s) => s.setView);
-  const setEditSentenceId = useAppStore((s) => s.setEditSentenceId);
 
   const correctChar = currentSentence.blanks[currentBlankIndex];
   const totalBlanks = currentSentence.missingIndices.length;

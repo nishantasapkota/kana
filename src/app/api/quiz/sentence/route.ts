@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, blankChar } = body;
 
-    const allChars = await db.kanaCharacter.findMany({ where: { kanaType: type } });
+    const allChars =
+      type === "numbers"
+        ? await db.numbersCharacter.findMany({ orderBy: { id: "asc" } })
+        : await db.kanaCharacter.findMany({ where: { kanaType: type }, orderBy: { id: "asc" } });
     const correctKana = allChars.find((c) => c.char === blankChar);
 
     if (!correctKana) {
