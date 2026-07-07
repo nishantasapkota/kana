@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "prebuild": "pnpm exec prisma generate",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "prepare": "pnpm exec prisma generate",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "generate:data": "node -e \"const{PrismaClient}=require('@prisma/client');const db=new PrismaClient();Promise.all([db.kanaCharacter.findMany({orderBy:{id:'asc'}}),db.kanaSentence.findMany({orderBy:{id:'asc'}})]).then(([c,s])=>{require('fs').writeFileSync('public/kana-data.json',JSON.stringify({characters:c,sentences:s.map(x=>({...x,missingIndices:JSON.parse(x.missingIndices),blanks:JSON.parse(x.blanks)}))}));console.log('Generated '+c.length+' chars, '+s.length+' sentences');db.\\$disconnect()})\"",
