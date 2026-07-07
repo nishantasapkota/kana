@@ -8,6 +8,7 @@ export interface KanaOption {
   id: number;
   char: string;
   romaji: string;
+  group?: string;
 }
 
 interface QuizState {
@@ -50,7 +51,6 @@ interface Results {
 }
 
 interface AppState {
-  // Navigation
   view: AppView;
   kanaType: KanaType;
   setView: (view: AppView) => void;
@@ -58,44 +58,33 @@ interface AppState {
 
   quizMode: "character" | "sentence";
 
-  // Character quiz
   charQuiz: CharacterQuizState;
   initCharQuiz: () => Promise<void>;
-  nextCharQuestion: () => Promise<void>;
+  nextCharQuestion: () => void;
   answerCharQuestion: (value: string) => void;
   toggleCharHint: () => void;
   setCharDirection: (dir: QuizDirection) => void;
 
-  // Sentence quiz
   sentenceQuiz: SentenceQuizState;
   initSentenceQuiz: () => Promise<void>;
-  nextSentenceQuestion: () => Promise<void>;
-  fetchNextBlankOptions: (blankChar: string) => Promise<void>;
+  nextSentenceQuestion: () => void;
   answerSentenceQuestion: (char: string) => void;
   toggleSentenceHint: () => void;
 
-  // Progress
   score: number;
   totalQuestions: number;
   wrongAnswers: KanaOption[];
   resetScore: () => void;
 
-  // Results
   results: Results | null;
-
   questionsPerSession: number;
   setQuestionsPerSession: (n: number) => void;
 
-  // Admin
   allSentences: { id: number; text: string; kanaType: string }[];
   fetchSentences: () => Promise<void>;
   addSentence: (data: {
-    text: string;
-    reading: string;
-    meaning: string;
-    kanaType: string;
-    missingIndices: number[];
-    blanks: string[];
+    text: string; reading: string; meaning: string;
+    kanaType: string; missingIndices: number[]; blanks: string[];
   }) => Promise<boolean>;
   deleteSentence: (id: number) => Promise<void>;
 
@@ -103,30 +92,47 @@ interface AppState {
 }
 
 const initialCharQuiz: CharacterQuizState = {
-  currentChar: null,
-  group: "",
-  options: [],
-  direction: "char-to-romaji",
-  selectedAnswer: null,
-  isCorrect: null,
-  showHint: false,
-  answered: false,
-  loading: false,
-  hint: "",
+  currentChar: null, group: "", options: [], direction: "char-to-romaji",
+  selectedAnswer: null, isCorrect: null, showHint: false, answered: false, loading: false, hint: "",
 };
 
 const initialSentenceQuiz: SentenceQuizState = {
-  currentSentence: null,
-  currentBlankIndex: 0,
-  options: [],
-  filledBlanks: [],
-  selectedAnswer: null,
-  isCorrect: null,
-  showHint: false,
-  answered: false,
-  loading: false,
-  hint: "",
+  currentSentence: null, currentBlankIndex: 0, options: [], filledBlanks: [],
+  selectedAnswer: null, isCorrect: null, showHint: false, answered: false, loading: false, hint: "",
 };
+
+// --- Helper functions for client-side quiz generation ---
+
+function getRandomItems<T>(arr: T[], count: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+function generateMCQOptions(correct: KanaOption, allChars: KanaOption[]): KanaOption[] {
+  const others = allChars.filter((c) => c.romaji !== correct.romaji);
+  const wrong = getRandomItems(others, 3);
+  return [correct, ...wrong].sort(() => Math.random() - 0.5);
+}
+
+// In-memory cache of kana data fetched from DB
+let cachedKana: Record<string, KanaOption[]> = {};
+let cachedSentences: Record<string, typeof initialSentenceQuiz.currentSentence[]> = {};
+
+async function ensureDataLoaded(type: KanaType) {
+  if (cachedKana[type]?.length) return;
+  try {
+    const [kanaRes, sentRes] = await Promise.all([
+      fetch(`/api/kana?type=${type}`),
+      fetch(`/api/sentences?type=${type}`),
+    ]);
+    if (kanaRes.ok) cachedKana[type] = await kanaRes.json();
+    if (sentRes.ok) cachedSentences[type] = await sentRes.json();
+  } catch {
+    // If API fails, use empty arrays
+    if (!cachedKana[type]) cachedKana[type] = [];
+    if (!cachedSentences[type]) cachedSentences[type] = [];
+  }
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   view: "landing",
@@ -140,12 +146,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   quizMode: "character",
-
-  score: 0,
-  totalQuestions: 0,
-  wrongAnswers: [],
+  score: 0, totalQuestions: 0, wrongAnswers: [], results: null,
   resetScore: () => set({ score: 0, totalQuestions: 0, wrongAnswers: [], results: null }),
-  results: null,
   questionsPerSession: 10,
   setQuestionsPerSession: (n) => set({ questionsPerSession: n }),
 
@@ -157,248 +159,154 @@ export const useAppStore = create<AppState>((set, get) => ({
         const data = await res.json();
         set({ allSentences: data.map((s: { id: number; text: string; kanaType: string }) => ({ id: s.id, text: s.text, kanaType: s.kanaType })) });
       }
-    } catch {
-      // silently fail
-    }
+    } catch { /* silent */ }
   },
-
   addSentence: async (data) => {
     try {
       const res = await fetch("/api/sentences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
       });
-      if (res.ok) {
-        get().fetchSentences();
-        return true;
-      }
+      if (res.ok) { get().fetchSentences(); return true; }
       return false;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   },
-
   deleteSentence: async (id) => {
     try {
-      await fetch(`/api/sentences?id=${id}`, { method: "DELETE" });
+      await fetch(`/api/sentences/delete?id=${id}`, { method: "DELETE" });
       get().fetchSentences();
-    } catch {
-      // silently fail
-    }
+    } catch { /* silent */ }
   },
 
-  // Character Quiz
+  // --- Character Quiz (client-side generation from cached data) ---
   charQuiz: { ...initialCharQuiz },
 
   initCharQuiz: async () => {
     const { kanaType } = get();
-    set({
-      view: "character",
-      quizMode: "character",
-      score: 0,
-      totalQuestions: 0,
-      wrongAnswers: [],
-      results: null,
-      charQuiz: { ...initialCharQuiz, loading: true, direction: get().charQuiz.direction },
-    });
+    set({ view: "character", quizMode: "character", score: 0, totalQuestions: 0, wrongAnswers: [], results: null,
+      charQuiz: { ...initialCharQuiz, loading: true, direction: get().charQuiz.direction } });
 
-    try {
-      const direction = get().charQuiz.direction;
-      const res = await fetch(`/api/quiz/character?type=${kanaType}&direction=${direction}`);
-      if (res.ok) {
-        const data = await res.json();
-        set({
-          charQuiz: {
-            ...initialCharQuiz,
-            currentChar: { id: data.id, char: data.char, romaji: data.romaji },
-            group: data.group,
-            options: data.options,
-            direction: data.direction,
-            hint: data.hint,
-          },
-        });
-      }
-    } catch {
-      set((s) => ({ charQuiz: { ...s.charQuiz, loading: false } }));
-    }
+    await ensureDataLoaded(kanaType);
+    const allChars = cachedKana[kanaType];
+    if (!allChars?.length) { set((s) => ({ charQuiz: { ...s.charQuiz, loading: false } })); return; }
+
+    const char = getRandomItems(allChars, 1)[0];
+    set({
+      charQuiz: {
+        ...initialCharQuiz, currentChar: char, group: char.group || "",
+        options: generateMCQOptions(char, allChars),
+        direction: get().charQuiz.direction,
+        hint: `Hint: ${char.group || ""} — starts with "${char.romaji[0]}"`,
+      },
+    });
   },
 
-  nextCharQuestion: async () => {
-    const { totalQuestions, questionsPerSession, score } = get();
-
+  nextCharQuestion: () => {
+    const { totalQuestions, questionsPerSession, score, kanaType } = get();
     if (totalQuestions >= questionsPerSession) {
       const accuracy = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-      set({
-        view: "results",
-        results: { total: totalQuestions, correct: score, wrong: totalQuestions - score, accuracy },
-      });
+      set({ view: "results", results: { total: totalQuestions, correct: score, wrong: totalQuestions - score, accuracy } });
       return;
     }
 
-    set((s) => ({ charQuiz: { ...s.charQuiz, loading: true } }));
+    const allChars = cachedKana[kanaType];
+    if (!allChars?.length) return;
 
-    try {
-      const { kanaType } = get();
-      const direction = get().charQuiz.direction;
-      const res = await fetch(`/api/quiz/character?type=${kanaType}&direction=${direction}`);
-      if (res.ok) {
-        const data = await res.json();
-        set({
-          charQuiz: {
-            ...initialCharQuiz,
-            currentChar: { id: data.id, char: data.char, romaji: data.romaji },
-            group: data.group,
-            options: data.options,
-            direction: data.direction,
-            hint: data.hint,
-          },
-        });
-      }
-    } catch {
-      set((s) => ({ charQuiz: { ...s.charQuiz, loading: false } }));
+    const prevChar = get().charQuiz.currentChar;
+    let char = getRandomItems(allChars, 1)[0];
+    let attempts = 0;
+    while (char.romaji === prevChar?.romaji && attempts < 10) {
+      char = getRandomItems(allChars, 1)[0]; attempts++;
     }
+
+    set({
+      charQuiz: {
+        ...initialCharQuiz, currentChar: char, group: char.group || "",
+        options: generateMCQOptions(char, allChars),
+        direction: get().charQuiz.direction,
+        hint: `Hint: ${char.group || ""} — starts with "${char.romaji[0]}"`,
+      },
+    });
   },
 
   answerCharQuestion: (value: string) => {
     const { charQuiz } = get();
     if (charQuiz.answered || !charQuiz.currentChar) return;
 
-    const isCorrect =
-      charQuiz.direction === "char-to-romaji"
-        ? value === charQuiz.currentChar.romaji
-        : value === charQuiz.currentChar.char;
+    const isCorrect = charQuiz.direction === "char-to-romaji"
+      ? value === charQuiz.currentChar.romaji : value === charQuiz.currentChar.char;
 
-    if (isCorrect) {
-      set((s) => ({ score: s.score + 1 }));
-    } else {
-      set((s) => ({ wrongAnswers: [...s.wrongAnswers, charQuiz.currentChar!] }));
-    }
+    if (isCorrect) set((s) => ({ score: s.score + 1 }));
+    else set((s) => ({ wrongAnswers: [...s.wrongAnswers, charQuiz.currentChar!] }));
     set((s) => ({ totalQuestions: s.totalQuestions + 1 }));
 
-    set({
-      charQuiz: { ...charQuiz, selectedAnswer: value, isCorrect, answered: true },
-    });
-
-    setTimeout(() => {
-      get().nextCharQuestion();
-    }, 1500);
+    set({ charQuiz: { ...charQuiz, selectedAnswer: value, isCorrect, answered: true } });
+    setTimeout(() => get().nextCharQuestion(), 1500);
   },
 
-  toggleCharHint: () => {
-    set((s) => ({ charQuiz: { ...s.charQuiz, showHint: !s.charQuiz.showHint } }));
-  },
+  toggleCharHint: () => set((s) => ({ charQuiz: { ...s.charQuiz, showHint: !s.charQuiz.showHint } })),
 
   setCharDirection: (dir) => {
     set((s) => ({ charQuiz: { ...s.charQuiz, direction: dir } }));
     get().nextCharQuestion();
   },
 
-  // Sentence Quiz
+  // --- Sentence Quiz (client-side generation from cached data) ---
   sentenceQuiz: { ...initialSentenceQuiz },
 
   initSentenceQuiz: async () => {
     const { kanaType } = get();
-    set({
-      view: "sentence",
-      quizMode: "sentence",
-      score: 0,
-      totalQuestions: 0,
-      wrongAnswers: [],
-      results: null,
-      sentenceQuiz: { ...initialSentenceQuiz, loading: true },
-    });
+    set({ view: "sentence", quizMode: "sentence", score: 0, totalQuestions: 0, wrongAnswers: [], results: null,
+      sentenceQuiz: { ...initialSentenceQuiz, loading: true } });
 
-    try {
-      const res = await fetch(`/api/quiz/sentence?type=${kanaType}`);
-      if (res.ok) {
-        const data = await res.json();
-        set({
-          sentenceQuiz: {
-            ...initialSentenceQuiz,
-            currentSentence: {
-              id: data.id,
-              text: data.text,
-              reading: data.reading,
-              meaning: data.meaning,
-              kanaType: data.kanaType,
-              missingIndices: data.missingIndices,
-              blanks: data.blanks,
-            },
-            options: data.options,
-            hint: data.hint,
-          },
-        });
-      }
-    } catch {
-      set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: false } }));
+    await ensureDataLoaded(kanaType);
+    const allSentences = cachedSentences[kanaType];
+    const allChars = cachedKana[kanaType];
+    if (!allSentences?.length || !allChars?.length) {
+      set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: false } })); return;
     }
+
+    const sentence = getRandomItems(allSentences, 1)[0];
+    const correctChar = sentence.blanks[0];
+    const correctKana = allChars.find((c) => c.char === correctChar);
+
+    set({
+      sentenceQuiz: {
+        ...initialSentenceQuiz, currentSentence: sentence,
+        options: correctKana ? generateMCQOptions(correctKana, allChars) : [],
+        hint: `Hint: The answer is ${correctChar}`,
+      },
+    });
   },
 
-  nextSentenceQuestion: async () => {
-    const { totalQuestions, questionsPerSession, score } = get();
-
+  nextSentenceQuestion: () => {
+    const { totalQuestions, questionsPerSession, score, kanaType } = get();
     if (totalQuestions >= questionsPerSession) {
       const accuracy = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-      set({
-        view: "results",
-        results: { total: totalQuestions, correct: score, wrong: totalQuestions - score, accuracy },
-      });
+      set({ view: "results", results: { total: totalQuestions, correct: score, wrong: totalQuestions - score, accuracy } });
       return;
     }
 
-    set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: true } }));
+    const allSentences = cachedSentences[kanaType];
+    const allChars = cachedKana[kanaType];
+    if (!allSentences?.length || !allChars?.length) return;
 
-    try {
-      const { kanaType } = get();
-      const res = await fetch(`/api/quiz/sentence?type=${kanaType}`);
-      if (res.ok) {
-        const data = await res.json();
-        set({
-          sentenceQuiz: {
-            ...initialSentenceQuiz,
-            currentSentence: {
-              id: data.id,
-              text: data.text,
-              reading: data.reading,
-              meaning: data.meaning,
-              kanaType: data.kanaType,
-              missingIndices: data.missingIndices,
-              blanks: data.blanks,
-            },
-            options: data.options,
-            hint: data.hint,
-          },
-        });
-      }
-    } catch {
-      set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: false } }));
+    const prev = get().sentenceQuiz.currentSentence;
+    let sentence = getRandomItems(allSentences, 1)[0];
+    let attempts = 0;
+    while (sentence.text === prev?.text && attempts < 10) {
+      sentence = getRandomItems(allSentences, 1)[0]; attempts++;
     }
-  },
 
-  fetchNextBlankOptions: async (blankChar: string) => {
-    set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: true } }));
-    try {
-      const { kanaType } = get();
-      const res = await fetch("/api/quiz/sentence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: kanaType, blankChar }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        set((s) => ({
-          sentenceQuiz: {
-            ...s.sentenceQuiz,
-            loading: false,
-            options: data.options,
-            hint: data.hint,
-          },
-        }));
-      }
-    } catch {
-      set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: false } }));
-    }
+    const correctChar = sentence.blanks[0];
+    const correctKana = allChars.find((c) => c.char === correctChar);
+
+    set({
+      sentenceQuiz: {
+        ...initialSentenceQuiz, currentSentence: sentence,
+        options: correctKana ? generateMCQOptions(correctKana, allChars) : [],
+        hint: `Hint: The answer is ${correctChar}`,
+      },
+    });
   },
 
   answerSentenceQuestion: (char: string) => {
@@ -408,12 +316,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const correctChar = sentenceQuiz.currentSentence.blanks[sentenceQuiz.currentBlankIndex];
     const isCorrect = char === correctChar;
 
-    if (isCorrect) {
-      set((s) => ({ score: s.score + 1 }));
-    } else {
-      const wrongKana: KanaOption = { id: 0, char: correctChar, romaji: "?" };
-      set((s) => ({ wrongAnswers: [...s.wrongAnswers, wrongKana] }));
-    }
+    if (isCorrect) set((s) => ({ score: s.score + 1 }));
+    else set((s) => ({ wrongAnswers: [...s.wrongAnswers, { id: 0, char: correctChar, romaji: "?" }] }));
     set((s) => ({ totalQuestions: s.totalQuestions + 1 }));
 
     const newFilledBlanks = [...sentenceQuiz.filledBlanks, char];
@@ -421,49 +325,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     const isLastBlank = nextBlankIndex >= sentenceQuiz.currentSentence.missingIndices.length;
 
     if (isLastBlank) {
-      set({
-        sentenceQuiz: {
-          ...sentenceQuiz,
-          selectedAnswer: char,
-          isCorrect,
-          answered: true,
-          filledBlanks: newFilledBlanks,
-        },
-      });
-      setTimeout(() => {
-        get().nextSentenceQuestion();
-      }, 1500);
+      set({ sentenceQuiz: { ...sentenceQuiz, selectedAnswer: char, isCorrect, answered: true, filledBlanks: newFilledBlanks } });
+      setTimeout(() => get().nextSentenceQuestion(), 1500);
     } else {
       const nextCorrectChar = sentenceQuiz.currentSentence.blanks[nextBlankIndex];
+      const allChars = cachedKana[kanaType];
+      const nextCorrectKana = allChars?.find((c) => c.char === nextCorrectChar);
       set({
         sentenceQuiz: {
-          ...sentenceQuiz,
-          currentBlankIndex: nextBlankIndex,
-          selectedAnswer: null,
-          isCorrect: null,
-          showHint: false,
-          answered: false,
+          ...sentenceQuiz, currentBlankIndex: nextBlankIndex,
+          selectedAnswer: null, isCorrect: null, showHint: false, answered: false,
           filledBlanks: newFilledBlanks,
+          options: nextCorrectKana ? generateMCQOptions(nextCorrectKana, allChars) : [],
+          hint: `Hint: The answer is ${nextCorrectChar}`,
         },
       });
-      get().fetchNextBlankOptions(nextCorrectChar);
     }
   },
 
-  toggleSentenceHint: () => {
-    set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, showHint: !s.sentenceQuiz.showHint } }));
-  },
+  toggleSentenceHint: () => set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, showHint: !s.sentenceQuiz.showHint } })),
 
   resetAll: () => {
     set({
-      view: "landing",
-      quizMode: "character",
-      score: 0,
-      totalQuestions: 0,
-      wrongAnswers: [],
-      results: null,
-      charQuiz: { ...initialCharQuiz },
-      sentenceQuiz: { ...initialSentenceQuiz },
+      view: "landing", quizMode: "character", score: 0, totalQuestions: 0,
+      wrongAnswers: [], results: null,
+      charQuiz: { ...initialCharQuiz }, sentenceQuiz: { ...initialSentenceQuiz },
     });
   },
 }));

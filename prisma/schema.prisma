@@ -4,28 +4,28 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = "postgresql://neondb_owner:npg_wNW4JE5uajAk@ep-autumn-mouse-aoz6wq3k.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 }
 
 model KanaCharacter {
   id       Int    @id @default(autoincrement())
   char     String
   romaji   String
-  kanaType String // "hiragana" | "katakana"
-  group    String // "vowel" | "k" | "s" | "t" | "n" | "h" | "m" | "y" | "r" | "w" | "special"
+  kanaType String
+  group    String
 
   @@unique([char, kanaType])
   @@index([kanaType])
 }
 
 model KanaSentence {
-  id             Int    @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   text           String
   reading        String
   meaning        String
-  kanaType       String // "hiragana" | "katakana"
-  missingIndices String // JSON array e.g. "[3, 5]"
-  blanks         String // JSON array e.g. "[\"よ\", \"に\"]"
+  kanaType       String
+  missingIndices String
+  blanks         String
   createdAt      DateTime @default(now())
 
   @@index([kanaType])
