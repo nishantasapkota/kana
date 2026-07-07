@@ -101,16 +101,23 @@ const katakana = [
 ];
 
 const numbers = [
-  { char: "0", romaji: "zero", group: "digit" },
-  { char: "1", romaji: "one", group: "digit" },
-  { char: "2", romaji: "two", group: "digit" },
-  { char: "3", romaji: "three", group: "digit" },
-  { char: "4", romaji: "four", group: "digit" },
-  { char: "5", romaji: "five", group: "digit" },
-  { char: "6", romaji: "six", group: "digit" },
-  { char: "7", romaji: "seven", group: "digit" },
-  { char: "8", romaji: "eight", group: "digit" },
-  { char: "9", romaji: "nine", group: "digit" },
+  { char: "ぜろ", romaji: "0", group: "digit" },
+  { char: "いち", romaji: "1", group: "digit" },
+  { char: "に", romaji: "2", group: "digit" },
+  { char: "さん", romaji: "3", group: "digit" },
+  { char: "よん", romaji: "4", group: "digit" },
+  { char: "ご", romaji: "5", group: "digit" },
+  { char: "ろく", romaji: "6", group: "digit" },
+  { char: "なな", romaji: "7", group: "digit" },
+  { char: "はち", romaji: "8", group: "digit" },
+  { char: "きゅう", romaji: "9", group: "digit" },
+  // larger numbers (powers, to allow small->huge range quizzes)
+  { char: "じゅう", romaji: "10", group: "power" },
+  { char: "ひゃく", romaji: "100", group: "power" },
+  { char: "せん", romaji: "1000", group: "power" },
+  { char: "いちまん", romaji: "10000", group: "power" },
+  { char: "ひゃくまん", romaji: "1000000", group: "power" },
+  { char: "いちおく", romaji: "100000000", group: "power" },
 ];
 
 const days = [
