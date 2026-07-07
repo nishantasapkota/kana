@@ -322,6 +322,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ view: "sentence", quizMode: "sentence", score: 0, totalQuestions: 0, wrongAnswers: [], results: null,
       sentenceQuiz: { ...initialSentenceQuiz, loading: true } });
 
+    // Ensure character data is loaded for fallback option generation
+    await ensureDataLoaded(kanaType);
+
     const serverQuiz = await fetchSentenceQuizFromServer(kanaType);
     if (serverQuiz) {
       set({
@@ -345,7 +348,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    await ensureDataLoaded(kanaType);
     const allSentences = cachedSentences[kanaType];
     const allChars = cachedKana[kanaType];
     if (!allSentences?.length || !allChars?.length) {
@@ -436,6 +438,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       setTimeout(() => get().nextSentenceQuestion(), 1500);
     } else {
       const nextCorrectChar = sentenceQuiz.currentSentence.blanks[nextBlankIndex];
+      set({ sentenceQuiz: { ...sentenceQuiz, loading: true } });
       const serverOptions = await fetchSentenceOptionsFromServer(kanaType, nextCorrectChar);
       if (serverOptions?.options) {
         set({
@@ -449,6 +452,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             filledBlanks: newFilledBlanks,
             options: serverOptions.options,
             hint: serverOptions.hint || `Hint: The answer is ${nextCorrectChar}`,
+            loading: false,
           },
         });
       } else {
@@ -465,6 +469,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             filledBlanks: newFilledBlanks,
             options: nextCorrectKana ? generateMCQOptions(nextCorrectKana, allChars) : [],
             hint: `Hint: The answer is ${nextCorrectChar}`,
+            loading: false,
           },
         });
       }
