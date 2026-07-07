@@ -3,14 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const type = searchParams.get("type") || "hiragana";
+  const type = searchParams.get("type");
 
-  if (type !== "hiragana" && type !== "katakana") {
-    return NextResponse.json({ error: "Invalid type. Use 'hiragana' or 'katakana'." }, { status: 400 });
+  let where: { kanaType?: string } = {};
+  if (type && type !== "all") {
+    if (type !== "hiragana" && type !== "katakana") {
+      return NextResponse.json({ error: "Invalid type. Use 'hiragana', 'katakana', or 'all'." }, { status: 400 });
+    }
+    where = { kanaType: type };
   }
 
   const sentences = await db.kanaSentence.findMany({
-    where: { kanaType: type },
+    where,
     orderBy: { id: "asc" },
   });
 

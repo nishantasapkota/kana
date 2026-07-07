@@ -114,23 +114,46 @@ function generateMCQOptions(correct: KanaOption, allChars: KanaOption[]): KanaOp
   return [correct, ...wrong].sort(() => Math.random() - 0.5);
 }
 
-// In-memory cache of kana data fetched from DB
+// In-memory cache of kana data — loaded once from static JSON
 let cachedKana: Record<string, KanaOption[]> = {};
 let cachedSentences: Record<string, typeof initialSentenceQuiz.currentSentence[]> = {};
+let staticDataLoaded = false;
 
 async function ensureDataLoaded(type: KanaType) {
-  if (cachedKana[type]?.length) return;
-  try {
-    const [kanaRes, sentRes] = await Promise.all([
-      fetch(`/api/kana?type=${type}`),
-      fetch(`/api/sentences?type=${type}`),
-    ]);
-    if (kanaRes.ok) cachedKana[type] = await kanaRes.json();
-    if (sentRes.ok) cachedSentences[type] = await sentRes.json();
-  } catch {
-    // If API fails, use empty arrays
-    if (!cachedKana[type]) cachedKana[type] = [];
-    if (!cachedSentences[type]) cachedSentences[type] = [];
+  const kanaReady = cachedKana[type]?.length > 0;
+  const sentReady = cachedSentences[type]?.length > 0;
+  if (kanaReady && sentReady) return;
+
+  // Load static JSON on first call
+  if (!staticDataLoaded) {
+    try {
+      const res = await fetch("/kana-data.json");
+      if (res.ok) {
+        const data = await res.json();
+        cachedKana["hiragana"] = (data.characters || []).filter((c: { kanaType: string }) => c.kanaType === "hiragana");
+        cachedKana["katakana"] = (data.characters || []).filter((c: { kanaType: string }) => c.kanaType === "katakana");
+        cachedSentences["hiragana"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "hiragana");
+        cachedSentences["katakana"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "katakana");
+        staticDataLoaded = true;
+        return;
+      }
+    } catch {
+      // Fall through to API
+    }
+  }
+
+  // Fallback: fetch missing data from API
+  if (!kanaReady) {
+    try {
+      const kanaRes = await fetch(`/api/kana?type=${type}`);
+      if (kanaRes.ok) cachedKana[type] = await kanaRes.json();
+    } catch { if (!cachedKana[type]) cachedKana[type] = []; }
+  }
+  if (!sentReady) {
+    try {
+      const sentRes = await fetch(`/api/sentences?type=${type}`);
+      if (sentRes.ok) cachedSentences[type] = await sentRes.json();
+    } catch { if (!cachedSentences[type]) cachedSentences[type] = []; }
   }
 }
 
@@ -166,13 +189,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       const res = await fetch("/api/sentences", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
       });
-      if (res.ok) { get().fetchSentences(); return true; }
+      if (res.ok) {
+        // Invalidate client-side cache for the affected kana type
+        cachedSentences[data.kanaType] = [];
+        get().fetchSentences();
+        return true;
+      }
       return false;
     } catch { return false; }
   },
   deleteSentence: async (id) => {
     try {
+      // Find the sentence type before deleting for cache invalidation
+      const all = get().allSentences;
+      const sent = all.find((s) => s.id === id);
       await fetch(`/api/sentences/delete?id=${id}`, { method: "DELETE" });
+      if (sent) cachedSentences[sent.kanaType] = [];
       get().fetchSentences();
     } catch { /* silent */ }
   },
@@ -265,7 +297,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((s) => ({ sentenceQuiz: { ...s.sentenceQuiz, loading: false } })); return;
     }
 
-    const sentence = getRandomItems(allSentences, 1)[0];
+    const charSet = new Set(allChars.map((c) => c.char));
+
+    // Find a valid sentence whose blanks are all in the kana table
+    let sentence: typeof allSentences[0] | null = null;
+    for (let i = 0; i < 30; i++) {
+      const candidate = getRandomItems(allSentences, 1)[0];
+      if (candidate.blanks.every((b) => charSet.has(b))) {
+        sentence = candidate;
+        break;
+      }
+    }
+    if (!sentence) sentence = allSentences[0]; // fallback
+
     const correctChar = sentence.blanks[0];
     const correctKana = allChars.find((c) => c.char === correctChar);
 
@@ -273,7 +317,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       sentenceQuiz: {
         ...initialSentenceQuiz, currentSentence: sentence,
         options: correctKana ? generateMCQOptions(correctKana, allChars) : [],
-        hint: `Hint: The answer is ${correctChar}`,
+        hint: correctKana ? `Hint: The answer is ${correctChar}` : `Hint: ${correctChar}`,
       },
     });
   },
@@ -290,12 +334,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     const allChars = cachedKana[kanaType];
     if (!allSentences?.length || !allChars?.length) return;
 
+    const charSet = new Set(allChars.map((c) => c.char));
     const prev = get().sentenceQuiz.currentSentence;
-    let sentence = getRandomItems(allSentences, 1)[0];
-    let attempts = 0;
-    while (sentence.text === prev?.text && attempts < 10) {
-      sentence = getRandomItems(allSentences, 1)[0]; attempts++;
+
+    let sentence: typeof allSentences[0] | null = null;
+    for (let i = 0; i < 30; i++) {
+      const candidate = getRandomItems(allSentences, 1)[0];
+      if (candidate.text === prev?.text) continue;
+      if (candidate.blanks.every((b) => charSet.has(b))) {
+        sentence = candidate;
+        break;
+      }
     }
+    if (!sentence) sentence = getRandomItems(allSentences, 1)[0];
 
     const correctChar = sentence.blanks[0];
     const correctKana = allChars.find((c) => c.char === correctChar);
