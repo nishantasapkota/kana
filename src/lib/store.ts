@@ -121,6 +121,30 @@ let cachedKana: Record<string, KanaOption[]> = {};
 let cachedSentences: Record<string, typeof initialSentenceQuiz.currentSentence[]> = {};
 let staticDataLoaded = false;
 
+async function fetchSentenceQuizFromServer(type: KanaType) {
+  try {
+    const res = await fetch(`/api/quiz/sentence?type=${type}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchSentenceOptionsFromServer(type: KanaType, blankChar: string) {
+  try {
+    const res = await fetch(`/api/quiz/sentence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, blankChar }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 async function ensureDataLoaded(type: KanaType) {
   const kanaReady = cachedKana[type]?.length > 0;
   const sentReady = cachedSentences[type]?.length > 0;
@@ -141,7 +165,6 @@ async function ensureDataLoaded(type: KanaType) {
         cachedSentences["numbers"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "numbers");
         cachedSentences["days"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "days");
         staticDataLoaded = true;
-        return;
       }
     } catch {
       // Fall through to API
@@ -209,7 +232,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Find the sentence type before deleting for cache invalidation
       const all = get().allSentences;
       const sent = all.find((s) => s.id === id);
-      await fetch(`/api/sentences/delete?id=${id}`, { method: "DELETE" });
+      const typeQuery = sent?.kanaType ? `&type=${encodeURIComponent(sent.kanaType)}` : "";
+      await fetch(`/api/sentences/delete?id=${id}${typeQuery}`, { method: "DELETE" });
       if (sent) cachedSentences[sent.kanaType] = [];
       get().fetchSentences();
     } catch { /* silent */ }
@@ -298,6 +322,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ view: "sentence", quizMode: "sentence", score: 0, totalQuestions: 0, wrongAnswers: [], results: null,
       sentenceQuiz: { ...initialSentenceQuiz, loading: true } });
 
+    const serverQuiz = await fetchSentenceQuizFromServer(kanaType);
+    if (serverQuiz) {
+      set({ sentenceQuiz: { ...initialSentenceQuiz, ...serverQuiz, loading: false } });
+      return;
+    }
+
     await ensureDataLoaded(kanaType);
     const allSentences = cachedSentences[kanaType];
     const allChars = cachedKana[kanaType];
@@ -326,6 +356,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...initialSentenceQuiz, currentSentence: sentence,
         options: correctKana ? generateMCQOptions(correctKana, allChars) : [],
         hint: correctKana ? `Hint: The answer is ${correctChar}` : `Hint: ${correctChar}`,
+        loading: false,
       },
     });
   },
@@ -368,7 +399,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  answerSentenceQuestion: (char: string) => {
+  answerSentenceQuestion: async (char: string) => {
     const { sentenceQuiz, kanaType } = get();
     if (sentenceQuiz.answered || !sentenceQuiz.currentSentence) return;
 
@@ -388,17 +419,38 @@ export const useAppStore = create<AppState>((set, get) => ({
       setTimeout(() => get().nextSentenceQuestion(), 1500);
     } else {
       const nextCorrectChar = sentenceQuiz.currentSentence.blanks[nextBlankIndex];
-      const allChars = cachedKana[kanaType];
-      const nextCorrectKana = allChars?.find((c) => c.char === nextCorrectChar);
-      set({
-        sentenceQuiz: {
-          ...sentenceQuiz, currentBlankIndex: nextBlankIndex,
-          selectedAnswer: null, isCorrect: null, showHint: false, answered: false,
-          filledBlanks: newFilledBlanks,
-          options: nextCorrectKana ? generateMCQOptions(nextCorrectKana, allChars) : [],
-          hint: `Hint: The answer is ${nextCorrectChar}`,
-        },
-      });
+      const serverOptions = await fetchSentenceOptionsFromServer(kanaType, nextCorrectChar);
+      if (serverOptions?.options) {
+        set({
+          sentenceQuiz: {
+            ...sentenceQuiz,
+            currentBlankIndex: nextBlankIndex,
+            selectedAnswer: null,
+            isCorrect: null,
+            showHint: false,
+            answered: false,
+            filledBlanks: newFilledBlanks,
+            options: serverOptions.options,
+            hint: serverOptions.hint || `Hint: The answer is ${nextCorrectChar}`,
+          },
+        });
+      } else {
+        const allChars = cachedKana[kanaType];
+        const nextCorrectKana = allChars?.find((c) => c.char === nextCorrectChar);
+        set({
+          sentenceQuiz: {
+            ...sentenceQuiz,
+            currentBlankIndex: nextBlankIndex,
+            selectedAnswer: null,
+            isCorrect: null,
+            showHint: false,
+            answered: false,
+            filledBlanks: newFilledBlanks,
+            options: nextCorrectKana ? generateMCQOptions(nextCorrectKana, allChars) : [],
+            hint: `Hint: The answer is ${nextCorrectChar}`,
+          },
+        });
+      }
     }
   },
 

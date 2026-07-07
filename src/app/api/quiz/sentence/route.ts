@@ -15,8 +15,12 @@ export async function GET(request: NextRequest) {
   }
 
   const [allSentences, allChars] = await Promise.all([
-    db.kanaSentence.findMany({ where: { kanaType: type } }),
-    db.kanaCharacter.findMany({ where: { kanaType: type } }),
+    type === "numbers"
+      ? db.numbersSentence.findMany()
+      : db.kanaSentence.findMany({ where: { kanaType: type } }),
+    type === "numbers"
+      ? db.numbersCharacter.findMany()
+      : db.kanaCharacter.findMany({ where: { kanaType: type } }),
   ]);
 
   if (allSentences.length === 0) {
@@ -47,7 +51,7 @@ export async function GET(request: NextRequest) {
       text: rawSentence.text,
       reading: rawSentence.reading,
       meaning: rawSentence.meaning,
-      kanaType: rawSentence.kanaType,
+      kanaType: type,
       missingIndices,
       blanks,
       blankIndex: 0,

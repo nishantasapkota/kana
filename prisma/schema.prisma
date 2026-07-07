@@ -18,6 +18,23 @@ model KanaCharacter {
   @@index([kanaType])
 }
 
+model NumbersCharacter {
+  id     Int    @id @default(autoincrement())
+  char   String @unique
+  romaji String
+  group  String
+}
+
+model NumbersSentence {
+  id             Int      @id @default(autoincrement())
+  text           String
+  reading        String
+  meaning        String
+  missingIndices String
+  blanks         String
+  createdAt      DateTime @default(now())
+}
+
 model KanaSentence {
   id             Int      @id @default(autoincrement())
   text           String

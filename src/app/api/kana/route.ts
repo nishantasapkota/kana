@@ -9,10 +9,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid type. Use 'hiragana', 'katakana', 'numbers', or 'days'." }, { status: 400 });
   }
 
-  const characters = await db.kanaCharacter.findMany({
-    where: { kanaType: type },
-    orderBy: { id: "asc" },
-  });
+  const characters =
+    type === "numbers"
+      ? await db.numbersCharacter.findMany({ orderBy: { id: "asc" } })
+      : await db.kanaCharacter.findMany({
+          where: { kanaType: type },
+          orderBy: { id: "asc" },
+        });
 
   return NextResponse.json(characters);
 }

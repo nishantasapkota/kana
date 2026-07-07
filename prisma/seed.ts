@@ -100,24 +100,98 @@ const katakana = [
   { char: "ン", romaji: "n", group: "special" },
 ];
 
+const digitReadings = ["ぜろ", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+const tensPrefixes: Record<number, string> = {
+  1: "じゅう",
+  2: "にじゅう",
+  3: "さんじゅう",
+  4: "よんじゅう",
+  5: "ごじゅう",
+  6: "ろくじゅう",
+  7: "ななじゅう",
+  8: "はちじゅう",
+  9: "きゅうじゅう",
+};
+const hundredsPrefixes: Record<number, string> = {
+  1: "ひゃく",
+  2: "にひゃく",
+  3: "さんびゃく",
+  4: "よんひゃく",
+  5: "ごひゃく",
+  6: "ろっぴゃく",
+  7: "ななひゃく",
+  8: "はっぴゃく",
+  9: "きゅうひゃく",
+};
+const thousandsPrefixes: Record<number, string> = {
+  1: "せん",
+  2: "にせん",
+  3: "さんぜん",
+  4: "よんせん",
+  5: "ごせん",
+  6: "ろくせん",
+  7: "ななせん",
+  8: "はっせん",
+  9: "きゅうせん",
+};
+
+function chunkToJapanese(n: number): string {
+  const thousands = Math.floor(n / 1000);
+  const hundreds = Math.floor((n % 1000) / 100);
+  const tens = Math.floor((n % 100) / 10);
+  const ones = n % 10;
+  let result = "";
+  if (thousands) result += thousandsPrefixes[thousands];
+  if (hundreds) result += hundredsPrefixes[hundreds];
+  if (tens) result += tensPrefixes[tens];
+  if (ones) result += digitReadings[ones];
+  return result;
+}
+
+function numberToJapanese(n: number): string {
+  if (n === 0) return "ぜろ";
+
+  const units = ["", "まん", "おく", "ちょう", "けい"];
+  const parts: string[] = [];
+  let remaining = n;
+  let unitIndex = 0;
+
+  while (remaining > 0) {
+    const chunk = remaining % 10000;
+    if (chunk > 0) {
+      const chunkText = chunkToJapanese(chunk);
+      const suffix = units[unitIndex];
+      parts.unshift(chunkText + suffix);
+    }
+    remaining = Math.floor(remaining / 10000);
+    unitIndex += 1;
+  }
+
+  return parts.join("");
+}
+
 const numbers = [
-  { char: "ぜろ", romaji: "0", group: "digit" },
-  { char: "いち", romaji: "1", group: "digit" },
-  { char: "に", romaji: "2", group: "digit" },
-  { char: "さん", romaji: "3", group: "digit" },
-  { char: "よん", romaji: "4", group: "digit" },
-  { char: "ご", romaji: "5", group: "digit" },
-  { char: "ろく", romaji: "6", group: "digit" },
-  { char: "なな", romaji: "7", group: "digit" },
-  { char: "はち", romaji: "8", group: "digit" },
-  { char: "きゅう", romaji: "9", group: "digit" },
-  // larger numbers (powers, to allow small->huge range quizzes)
-  { char: "じゅう", romaji: "10", group: "power" },
-  { char: "ひゃく", romaji: "100", group: "power" },
-  { char: "せん", romaji: "1000", group: "power" },
-  { char: "いちまん", romaji: "10000", group: "power" },
-  { char: "ひゃくまん", romaji: "1000000", group: "power" },
-  { char: "いちおく", romaji: "100000000", group: "power" },
+  ...Array.from({ length: 1000 }, (_, i) => ({
+    char: numberToJapanese(i),
+    romaji: String(i),
+    group: i < 10 ? "digit" : i < 100 ? "tens" : "hundreds",
+  })),
+  ...[
+    1000,
+    10000,
+    12345,
+    100000,
+    123456,
+    1000000,
+    10000000,
+    100000000,
+    1000000000,
+    12233445562,
+  ].map((value) => ({
+    char: numberToJapanese(value),
+    romaji: String(value),
+    group: "large",
+  })),
 ];
 
 const days = [
@@ -176,6 +250,29 @@ const katakanaSentences = [
   { text: "ワイン", reading: "wain", meaning: "Wine", missingIndices: [0, 2], blanks: ["ワ", "ン"] },
 ];
 
+const numbersSentences = [
+  { text: "いちご", reading: "ichigo", meaning: "Strawberry", missingIndices: [0], blanks: ["いち"] },
+  { text: "ににん", reading: "ninin", meaning: "Two people", missingIndices: [0], blanks: ["に"] },
+  { text: "ごほん", reading: "gohon", meaning: "Five long objects", missingIndices: [0], blanks: ["ご"] },
+  { text: "よんほん", reading: "yonhon", meaning: "Four long objects", missingIndices: [0], blanks: ["よん"] },
+  { text: "ななつ", reading: "nanatsu", meaning: "Seven items", missingIndices: [0], blanks: ["なな"] },
+  { text: "はちにん", reading: "hachinin", meaning: "Eight people", missingIndices: [0], blanks: ["はち"] },
+  { text: "きゅうこう", reading: "kyuukou", meaning: "Express train", missingIndices: [0], blanks: ["きゅう"] },
+  { text: "ごじゅうえん", reading: "gojuu en", meaning: "Fifty yen", missingIndices: [0], blanks: ["ご"] },
+  { text: "せんえん", reading: "sen en", meaning: "One thousand yen", missingIndices: [0], blanks: ["せん"] },
+  { text: "ひゃくえん", reading: "hyaku en", meaning: "One hundred yen", missingIndices: [0], blanks: ["ひゃく"] },
+];
+
+const daysSentences = [
+  { text: "げつようび", reading: "getsuyoubi", meaning: "Monday", missingIndices: [0], blanks: ["月"] },
+  { text: "かようび", reading: "kayoubi", meaning: "Tuesday", missingIndices: [0], blanks: ["火"] },
+  { text: "すいようび", reading: "suiyoubi", meaning: "Wednesday", missingIndices: [0], blanks: ["水"] },
+  { text: "もくようび", reading: "mokuyoubi", meaning: "Thursday", missingIndices: [0], blanks: ["木"] },
+  { text: "きんようび", reading: "kinyoubi", meaning: "Friday", missingIndices: [0], blanks: ["金"] },
+  { text: "どようび", reading: "doyoubi", meaning: "Saturday", missingIndices: [0], blanks: ["土"] },
+  { text: "にちようび", reading: "nichiyoubi", meaning: "Sunday", missingIndices: [0], blanks: ["日"] },
+];
+
 async function seed() {
   console.log("Seeding kana characters...");
 
@@ -197,14 +294,12 @@ async function seed() {
     });
   }
 
-  // Insert numbers
-  for (const k of numbers) {
-    await prisma.kanaCharacter.upsert({
-      where: { char_kanaType: { char: k.char, kanaType: "numbers" } },
-      update: {},
-      create: { ...k, kanaType: "numbers" },
-    });
-  }
+  // Insert numbers into dedicated NumbersCharacter
+  await prisma.numbersCharacter.deleteMany();
+  await prisma.numbersCharacter.createMany({
+    data: numbers,
+    skipDuplicates: true,
+  });
 
   // Insert days
   for (const k of days) {
@@ -218,6 +313,12 @@ async function seed() {
   console.log(`Inserted ${hiragana.length} hiragana + ${katakana.length} katakana + ${numbers.length} numbers + ${days.length} days`);
 
   console.log("Seeding sentences...");
+
+  // Clear and repopulate sentence samples so repeated seed runs stay consistent.
+  await prisma.kanaSentence.deleteMany({
+    where: { kanaType: { in: ["hiragana", "katakana", "days"] } },
+  });
+  await prisma.numbersSentence.deleteMany();
 
   // Insert hiragana sentences
   for (const s of hiraganaSentences) {
@@ -243,7 +344,30 @@ async function seed() {
     });
   }
 
-  console.log(`Inserted ${hiraganaSentences.length} hiragana sentences + ${katakanaSentences.length} katakana sentences`);
+  // Insert numbers sentences into dedicated NumbersSentence
+  for (const s of numbersSentences) {
+    await prisma.numbersSentence.create({
+      data: {
+        ...s,
+        missingIndices: JSON.stringify(s.missingIndices),
+        blanks: JSON.stringify(s.blanks),
+      },
+    });
+  }
+
+  // Insert days sentences
+  for (const s of daysSentences) {
+    await prisma.kanaSentence.create({
+      data: {
+        ...s,
+        kanaType: "days",
+        missingIndices: JSON.stringify(s.missingIndices),
+        blanks: JSON.stringify(s.blanks),
+      },
+    });
+  }
+
+  console.log(`Inserted ${hiraganaSentences.length} hiragana sentences + ${katakanaSentences.length} katakana sentences + ${numbersSentences.length} numbers sentences + ${daysSentences.length} days sentences`);
   console.log("Done!");
 }
 

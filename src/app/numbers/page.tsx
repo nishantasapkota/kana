@@ -30,6 +30,15 @@ export default function NumbersPage() {
     <div className="min-h-screen flex flex-col">
       <section className="flex-1 flex items-start justify-center py-8 px-4">
         <div className="w-full max-w-3xl">
+          <div className="mb-6">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Numbers Practice
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+              Practice hiragana number readings and switch between character
+              mode and sentence mode for number words.
+            </p>
+          </div>
           <div className="flex items-center justify-end gap-2 mb-4">
             <Button
               variant={mode === "character" ? "default" : "outline"}

@@ -13,10 +13,28 @@ export async function GET(request: NextRequest) {
     where = { kanaType: type };
   }
 
-  const sentences = await db.kanaSentence.findMany({
-    where,
-    orderBy: { id: "asc" },
-  });
+  let sentences: any[] = [];
+  if (type === "numbers") {
+    const raw = await db.numbersSentence.findMany({ orderBy: { id: "asc" } });
+    sentences = raw.map((s) => ({
+      ...s,
+      kanaType: "numbers",
+    }));
+  } else if (type === "all") {
+    const [kanaSentences, numbersSentences] = await Promise.all([
+      db.kanaSentence.findMany({ orderBy: { id: "asc" } }),
+      db.numbersSentence.findMany({ orderBy: { id: "asc" } }),
+    ]);
+    sentences = [
+      ...kanaSentences,
+      ...numbersSentences.map((s) => ({ ...s, kanaType: "numbers" })),
+    ];
+  } else {
+    sentences = await db.kanaSentence.findMany({
+      where,
+      orderBy: { id: "asc" },
+    });
+  }
 
   const parsed = sentences.map((s) => ({
     ...s,
@@ -48,16 +66,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "missingIndices and blanks must have the same length." }, { status: 400 });
     }
 
-    const sentence = await db.kanaSentence.create({
-      data: {
-        text,
-        reading,
-        meaning,
-        kanaType,
-        missingIndices: JSON.stringify(missingIndices),
-        blanks: JSON.stringify(blanks),
-      },
-    });
+    const sentence =
+      kanaType === "numbers"
+        ? await db.numbersSentence.create({
+            data: {
+              text,
+              reading,
+              meaning,
+              missingIndices: JSON.stringify(missingIndices),
+              blanks: JSON.stringify(blanks),
+            },
+          })
+        : await db.kanaSentence.create({
+            data: {
+              text,
+              reading,
+              meaning,
+              kanaType,
+              missingIndices: JSON.stringify(missingIndices),
+              blanks: JSON.stringify(blanks),
+            },
+          });
 
     return NextResponse.json({
       ...sentence,
@@ -91,17 +120,29 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "missingIndices and blanks must have the same length." }, { status: 400 });
     }
 
-    const sentence = await db.kanaSentence.update({
-      where: { id },
-      data: {
-        text,
-        reading,
-        meaning,
-        kanaType,
-        missingIndices: JSON.stringify(missingIndices),
-        blanks: JSON.stringify(blanks),
-      },
-    });
+    const sentence =
+      kanaType === "numbers"
+        ? await db.numbersSentence.update({
+            where: { id },
+            data: {
+              text,
+              reading,
+              meaning,
+              missingIndices: JSON.stringify(missingIndices),
+              blanks: JSON.stringify(blanks),
+            },
+          })
+        : await db.kanaSentence.update({
+            where: { id },
+            data: {
+              text,
+              reading,
+              meaning,
+              kanaType,
+              missingIndices: JSON.stringify(missingIndices),
+              blanks: JSON.stringify(blanks),
+            },
+          });
 
     return NextResponse.json({
       ...sentence,

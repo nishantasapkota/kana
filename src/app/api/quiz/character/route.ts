@@ -15,9 +15,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid type." }, { status: 400 });
   }
 
-  const allChars = await db.kanaCharacter.findMany({
-    where: { kanaType: type },
-  });
+  const allChars =
+    type === "numbers"
+      ? await db.numbersCharacter.findMany()
+      : await db.kanaCharacter.findMany({ where: { kanaType: type } });
 
   if (allChars.length < 4) {
     return NextResponse.json({ error: "Not enough characters." }, { status: 500 });

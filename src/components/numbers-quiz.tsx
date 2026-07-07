@@ -84,7 +84,16 @@ export function NumbersQuiz() {
       setOptions([]);
       return;
     }
-    const q = pool[Math.floor(Math.random() * pool.length)];
+
+    let q: NumItem;
+    if (pool.length === 1) {
+      q = pool[0];
+    } else {
+      const currentId = question?.id;
+      const candidates = pool.filter((item) => item.id !== currentId);
+      q = candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
     setQuestion(q);
     setOptions(getOptions(q, pool));
   };
