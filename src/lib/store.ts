@@ -87,6 +87,8 @@ interface AppState {
     kanaType: string; missingIndices: number[]; blanks: string[];
   }) => Promise<boolean>;
   deleteSentence: (id: number) => Promise<void>;
+  editSentenceId: number | null;
+  setEditSentenceId: (id: number | null) => void;
 
   resetAll: () => void;
 }
@@ -212,6 +214,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().fetchSentences();
     } catch { /* silent */ }
   },
+  editSentenceId: null,
+  setEditSentenceId: (id) => set({ editSentenceId: id }),
 
   // --- Character Quiz (client-side generation from cached data) ---
   charQuiz: { ...initialCharQuiz },

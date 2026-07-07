@@ -24,6 +24,17 @@ import {
   Database,
   CheckCircle2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 export function AdminForm() {
   const {
@@ -32,12 +43,15 @@ export function AdminForm() {
     fetchSentences,
     addSentence,
     deleteSentence,
+    setEditSentenceId,
     kanaType,
   } = useAppStore();
   const [formKanaType, setFormKanaType] = useState<string>("hiragana");
   const [text, setText] = useState("");
   const [reading, setReading] = useState("");
   const [meaning, setMeaning] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [blankAnswers, setBlankAnswers] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
@@ -45,6 +59,34 @@ export function AdminForm() {
   useEffect(() => {
     fetchSentences();
   }, [fetchSentences]);
+
+  // If store-level edit id is set externally, populate form
+  const editSentenceId = useAppStore((s) => s.editSentenceId);
+  useEffect(() => {
+    if (!editSentenceId) return;
+    const s = allSentences.find((x) => x.id === editSentenceId);
+    if (s) {
+      setEditingId(s.id);
+      setFormKanaType(s.kanaType);
+      const chars = s.text.split("");
+      let offset = 0;
+      for (const idx of (s as any).missingIndices || []) {
+        chars.splice(idx + offset, 0, "＿");
+        offset += 1;
+      }
+      setText(chars.join(""));
+      setReading((s as any).reading || "");
+      setMeaning((s as any).meaning || "");
+      setBlankAnswers(((s as any).blanks || []).join(", "));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editSentenceId]);
+
+  useEffect(() => {
+    // When kanaType in store changes, update form default
+    setFormKanaType(kanaType);
+  }, [kanaType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,27 +112,109 @@ export function AdminForm() {
       return;
     }
 
-    // User needs to provide the blank answers - use a simple prompt approach
-    const blankAnswers = blanksFromInput(text, missingIndices);
-    if (!blankAnswers) return;
+    // User needs to provide the blank answers
+    const blankAnswersArr = parseBlankAnswers(
+      blankAnswers,
+      missingIndices.length,
+    );
+    if (!blankAnswersArr) return;
 
     setSubmitting(true);
-    const ok = await addSentence({
-      text: text.replace(/[＿_]/g, ""),
-      reading,
-      meaning,
-      kanaType: formKanaType,
-      missingIndices,
-      blanks: blankAnswers,
-    });
+    let ok = false;
+    if (editingId) {
+      // Update existing
+      try {
+        const res = await fetch(`/api/sentences`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingId,
+            text: text.replace(/[＿_]/g, ""),
+            reading,
+            meaning,
+            kanaType: formKanaType,
+            missingIndices,
+            blanks: blankAnswersArr,
+          }),
+        });
+        ok = res.ok;
+      } catch {
+        ok = false;
+      }
+    } else {
+      ok = await addSentence({
+        text: text.replace(/[＿_]/g, ""),
+        reading,
+        meaning,
+        kanaType: formKanaType,
+        missingIndices,
+        blanks: blankAnswersArr,
+      });
+    }
 
     setSubmitting(false);
     if (ok) {
       setText("");
       setReading("");
       setMeaning("");
+      setEditingId(null);
+      setEditSentenceId(null);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
+      fetchSentences();
+    }
+  };
+
+  const startEdit = (s: {
+    id: number;
+    text: string;
+    reading: string;
+    meaning: string;
+    kanaType: string;
+    missingIndices: number[];
+    blanks: string[];
+  }) => {
+    setEditingId(s.id);
+    setFormKanaType(s.kanaType);
+    // Re-insert blanks marker into text at missing indices for editing
+    const chars = s.text.split("");
+    // Insert placeholders at indices
+    let offset = 0;
+    for (const idx of s.missingIndices) {
+      chars.splice(idx + offset, 0, "＿");
+      offset += 1;
+    }
+    setText(chars.join(""));
+    setReading(s.reading);
+    setMeaning(s.meaning);
+    setBlankAnswers(s.blanks.join(", "));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setText("");
+    setReading("");
+    setMeaning("");
+    setBlankAnswers("");
+    setEditSentenceId(null);
+  };
+
+  const handleConfirmDelete = async (id: number) => {
+    try {
+      await deleteSentence(id);
+      // If we were editing this sentence, clear edit state
+      if (editingId === id) {
+        setEditingId(null);
+        setText("");
+        setReading("");
+        setMeaning("");
+        setBlankAnswers("");
+        setEditSentenceId(null);
+      }
+      fetchSentences();
+    } catch {
+      // ignore
     }
   };
 
@@ -201,15 +325,31 @@ export function AdminForm() {
                       (one per blank, comma-separated, in order)
                     </span>
                   </Label>
-                  <Input id="blank-answers" placeholder="e.g., よ" />
+                  <Input
+                    id="blank-answers"
+                    value={blankAnswers}
+                    onChange={(e) => setBlankAnswers(e.target.value)}
+                    placeholder="e.g., よ"
+                  />
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Button type="submit" disabled={submitting}>
                     {submitting && <Loader2 className="size-4 animate-spin" />}
                     {!submitting && <Plus className="size-4" />}
-                    {submitting ? "Adding..." : "Add Sentence"}
+                    {submitting
+                      ? editingId
+                        ? "Updating..."
+                        : "Adding..."
+                      : editingId
+                        ? "Update Sentence"
+                        : "Add Sentence"}
                   </Button>
+                  {editingId && (
+                    <Button type="button" variant="ghost" onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                  )}
                   {success && (
                     <motion.span
                       initial={{ opacity: 0, x: -10 }}
@@ -275,14 +415,44 @@ export function AdminForm() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 shrink-0"
-                      onClick={() => deleteSentence(s.id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 opacity-0 group-hover:opacity-100 transition-opacity text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 shrink-0"
+                        onClick={() => startEdit(s as any)}
+                      >
+                        <Database className="size-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 shrink-0"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete sentence</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this sentence?
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleConfirmDelete(s.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -298,16 +468,10 @@ export function AdminForm() {
   );
 }
 
-/** Extract blank answers from the dedicated input field */
-function blanksFromInput(
-  text: string,
-  missingIndices: number[],
-): string[] | null {
-  const input = (document.getElementById("blank-answers") as HTMLInputElement)
-    ?.value;
+function parseBlankAnswers(input: string, expected: number): string[] | null {
   if (!input?.trim()) {
     alert(
-      "Please enter the blank answers (comma-separated) in the &quot;Blank Answers&quot; field.",
+      'Please enter the blank answers (comma-separated) in the "Blank Answers" field.',
     );
     return null;
   }
@@ -315,10 +479,8 @@ function blanksFromInput(
     .split(/[,，]/)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (answers.length !== missingIndices.length) {
-    alert(
-      `Expected ${missingIndices.length} blank answer(s) but got ${answers.length}.`,
-    );
+  if (answers.length !== expected) {
+    alert(`Expected ${expected} blank answer(s) but got ${answers.length}.`);
     return null;
   }
   return answers;

@@ -193,14 +193,19 @@ export function Landing() {
 
                   <div className="space-y-2">
                     <Button
-                      onClick={() => handleStart("numbers", "character")}
+                      asChild
                       className="w-full justify-between bg-sky-500 hover:bg-sky-600 text-white"
                     >
-                      <span className="flex items-center gap-2">
-                        <BookOpen className="size-4" />
-                        Character Quiz
-                      </span>
-                      <ChevronRight className="size-4" />
+                      <a
+                        href="/numbers"
+                        className="flex items-center justify-between w-full"
+                      >
+                        <span className="flex items-center gap-2">
+                          <BookOpen className="size-4" />
+                          Character Quiz
+                        </span>
+                        <ChevronRight className="size-4" />
+                      </a>
                     </Button>
                     <Button
                       onClick={() => handleStart("numbers", "sentence")}

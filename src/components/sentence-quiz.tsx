@@ -32,10 +32,13 @@ export function SentenceQuiz() {
 
   if (!currentSentence) return null;
 
+  const setView = useAppStore((s) => s.setView);
+  const setEditSentenceId = useAppStore((s) => s.setEditSentenceId);
+
   const correctChar = currentSentence.blanks[currentBlankIndex];
   const totalBlanks = currentSentence.missingIndices.length;
 
-  const getButtonStyle = (option: typeof options[0]) => {
+  const getButtonStyle = (option: (typeof options)[0]) => {
     if (!answered) return "outline";
     if (option.char === selectedAnswer) {
       return isCorrect ? "default" : "destructive";
@@ -46,7 +49,7 @@ export function SentenceQuiz() {
     return "outline";
   };
 
-  const getButtonClass = (option: typeof options[0]) => {
+  const getButtonClass = (option: (typeof options)[0]) => {
     if (!answered) return "";
     if (option.char === correctChar && isCorrect) {
       return "bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white";
@@ -115,6 +118,19 @@ export function SentenceQuiz() {
             <BookOpen className="size-3 mr-1.5" />
             Blank {currentBlankIndex + 1} of {totalBlanks}
           </Badge>
+        </div>
+
+        <div className="flex justify-end -mt-6 mr-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setEditSentenceId(currentSentence?.id || null);
+              setView("admin");
+            }}
+          >
+            Edit Sentence
+          </Button>
         </div>
 
         <motion.div
@@ -200,7 +216,9 @@ export function SentenceQuiz() {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     The correct answer is{" "}
-                    <span className="font-bold text-foreground">{correctChar}</span>
+                    <span className="font-bold text-foreground">
+                      {correctChar}
+                    </span>
                   </p>
                 </div>
               )}

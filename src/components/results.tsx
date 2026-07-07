@@ -20,17 +20,28 @@ import {
 } from "lucide-react";
 
 export function Results() {
-  const { results, wrongAnswers, quizMode, kanaType, resetAll, initCharQuiz, initSentenceQuiz } =
-    useAppStore();
+  const {
+    results,
+    wrongAnswers,
+    quizMode,
+    kanaType,
+    resetAll,
+    initCharQuiz,
+    initSentenceQuiz,
+  } = useAppStore();
+  const setView = useAppStore((s) => s.setView);
 
   if (!results) return null;
 
   const { total, correct, wrong, accuracy } = results;
 
   const getGrade = () => {
-    if (accuracy >= 90) return { label: "Excellent!", emoji: "🌟", color: "text-amber-500" };
-    if (accuracy >= 70) return { label: "Great Job!", emoji: "🎉", color: "text-emerald-500" };
-    if (accuracy >= 50) return { label: "Good Effort!", emoji: "💪", color: "text-blue-500" };
+    if (accuracy >= 90)
+      return { label: "Excellent!", emoji: "🌟", color: "text-amber-500" };
+    if (accuracy >= 70)
+      return { label: "Great Job!", emoji: "🎉", color: "text-emerald-500" };
+    if (accuracy >= 50)
+      return { label: "Good Effort!", emoji: "💪", color: "text-blue-500" };
     return { label: "Keep Practicing!", emoji: "📚", color: "text-rose-500" };
   };
 
@@ -96,8 +107,7 @@ export function Results() {
                     strokeDasharray={`${2 * Math.PI * 52}`}
                     initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
                     animate={{
-                      strokeDashoffset:
-                        2 * Math.PI * 52 * (1 - accuracy / 100),
+                      strokeDashoffset: 2 * Math.PI * 52 * (1 - accuracy / 100),
                     }}
                     transition={{ delay: 0.3, duration: 1, ease: "easeOut" }}
                     className={
@@ -111,7 +121,9 @@ export function Results() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-3xl font-bold">{accuracy}%</span>
-                  <span className="text-xs text-muted-foreground">Accuracy</span>
+                  <span className="text-xs text-muted-foreground">
+                    Accuracy
+                  </span>
                 </div>
               </div>
             </div>
@@ -130,14 +142,18 @@ export function Results() {
                   <CheckCircle2 className="size-3.5" />
                   <span className="text-xs">Correct</span>
                 </div>
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{correct}</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {correct}
+                </p>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-center gap-1 text-rose-500">
                   <XCircle className="size-3.5" />
                   <span className="text-xs">Wrong</span>
                 </div>
-                <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{wrong}</p>
+                <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+                  {wrong}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -163,8 +179,12 @@ export function Results() {
                       variant="outline"
                       className="px-3 py-1.5 text-sm font-mono"
                     >
-                      <span className="font-bold text-base mr-2">{item.char}</span>
-                      <span className="text-muted-foreground">{item.romaji}</span>
+                      <span className="font-bold text-base mr-2">
+                        {item.char}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {item.romaji}
+                      </span>
                     </Badge>
                   </motion.div>
                 ))}
@@ -175,20 +195,21 @@ export function Results() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            onClick={handleRetry}
-            className="flex-1 gap-2"
-          >
+          <Button onClick={handleRetry} className="flex-1 gap-2">
             <RotateCcw className="size-4" />
             Try Again
           </Button>
-          <Button
-            variant="outline"
-            onClick={resetAll}
-            className="flex-1 gap-2"
-          >
+          <Button variant="outline" onClick={resetAll} className="flex-1 gap-2">
             <Home className="size-4" />
             Back to Home
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setView("admin")}
+            className="flex-1 gap-2"
+          >
+            <PenLine className="size-4" />
+            Manage Sentences
           </Button>
         </div>
       </motion.div>
