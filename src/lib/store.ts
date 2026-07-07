@@ -324,7 +324,24 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const serverQuiz = await fetchSentenceQuizFromServer(kanaType);
     if (serverQuiz) {
-      set({ sentenceQuiz: { ...initialSentenceQuiz, ...serverQuiz, loading: false } });
+      set({
+        sentenceQuiz: {
+          ...initialSentenceQuiz,
+          currentSentence: {
+            id: serverQuiz.id,
+            text: serverQuiz.text,
+            reading: serverQuiz.reading,
+            meaning: serverQuiz.meaning,
+            kanaType: serverQuiz.kanaType,
+            missingIndices: serverQuiz.missingIndices,
+            blanks: serverQuiz.blanks,
+          },
+          currentBlankIndex: serverQuiz.blankIndex ?? 0,
+          options: serverQuiz.options || [],
+          hint: serverQuiz.hint || "",
+          loading: false,
+        },
+      });
       return;
     }
 
