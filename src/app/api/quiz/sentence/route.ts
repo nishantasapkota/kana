@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "hiragana";
 
-  if (type !== "hiragana" && type !== "katakana") {
+  if (type !== "hiragana" && type !== "katakana" && type !== "numbers" && type !== "days") {
     return NextResponse.json({ error: "Invalid type." }, { status: 400 });
   }
 

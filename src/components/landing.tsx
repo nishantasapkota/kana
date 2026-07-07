@@ -25,10 +25,19 @@ const fadeUp = {
 };
 
 export function Landing() {
-  const { setKanaType, initCharQuiz, initSentenceQuiz, setQuestionsPerSession, questionsPerSession, setView } =
-    useAppStore();
+  const {
+    setKanaType,
+    initCharQuiz,
+    initSentenceQuiz,
+    setQuestionsPerSession,
+    questionsPerSession,
+    setView,
+  } = useAppStore();
 
-  const handleStart = (type: "hiragana" | "katakana", mode: "character" | "sentence") => {
+  const handleStart = (
+    type: "hiragana" | "katakana" | "numbers" | "days",
+    mode: "character" | "sentence",
+  ) => {
     setKanaType(type);
     if (mode === "character") {
       initCharQuiz();
@@ -47,7 +56,11 @@ export function Landing() {
           className="w-full max-w-2xl mx-auto text-center space-y-6"
         >
           {/* Logo / Title */}
-          <motion.div custom={0} variants={fadeUp} className="flex items-center justify-center gap-2 mb-2">
+          <motion.div
+            custom={0}
+            variants={fadeUp}
+            className="flex items-center justify-center gap-2 mb-2"
+          >
             <Cherry className="size-7 text-rose-500" />
             <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
               Kana Practice
@@ -66,9 +79,13 @@ export function Landing() {
             </span>
           </motion.h1>
 
-          <motion.p custom={2} variants={fadeUp} className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto">
-            Master Hiragana and Katakana through interactive quizzes.
-            Choose your script and start practicing!
+          <motion.p
+            custom={2}
+            variants={fadeUp}
+            className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto"
+          >
+            Master Hiragana and Katakana through interactive quizzes. Choose
+            your script and start practicing!
           </motion.p>
 
           {/* Kana Type Selection */}
@@ -158,6 +175,88 @@ export function Landing() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Numbers Card */}
+              <Card className="group cursor-pointer border-2 hover:border-sky-300 transition-all duration-300 hover:shadow-lg">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-12 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                      <Languages className="size-6" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-lg">Numbers</h3>
+                      <p className="text-xs text-muted-foreground">
+                        0–9 — digits
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => handleStart("numbers", "character")}
+                      className="w-full justify-between bg-sky-500 hover:bg-sky-600 text-white"
+                    >
+                      <span className="flex items-center gap-2">
+                        <BookOpen className="size-4" />
+                        Character Quiz
+                      </span>
+                      <ChevronRight className="size-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleStart("numbers", "sentence")}
+                      variant="outline"
+                      className="w-full justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <PenLine className="size-4" />
+                        Sentence Mode
+                      </span>
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Days Card */}
+              <Card className="group cursor-pointer border-2 hover:border-emerald-300 transition-all duration-300 hover:shadow-lg">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                      <Languages className="size-6" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-lg">Days</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Days of the week — 日 月 火 水 木 金 土
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => handleStart("days", "character")}
+                      className="w-full justify-between bg-emerald-500 hover:bg-emerald-600 text-white"
+                    >
+                      <span className="flex items-center gap-2">
+                        <BookOpen className="size-4" />
+                        Character Quiz
+                      </span>
+                      <ChevronRight className="size-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleStart("days", "sentence")}
+                      variant="outline"
+                      className="w-full justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <PenLine className="size-4" />
+                        Sentence Mode
+                      </span>
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </motion.div>
 
@@ -165,7 +264,9 @@ export function Landing() {
           <motion.div custom={4} variants={fadeUp} className="pt-4">
             <div className="inline-flex items-center gap-3 bg-muted/50 rounded-full px-4 py-2">
               <Sparkles className="size-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Questions per session:</span>
+              <span className="text-sm text-muted-foreground">
+                Questions per session:
+              </span>
               <div className="flex gap-1">
                 {[5, 10, 15, 20].map((n) => (
                   <Badge
@@ -180,7 +281,7 @@ export function Landing() {
               </div>
             </div>
           </motion.div>
-        {/* Admin Link */}
+          {/* Admin Link */}
           <motion.div custom={5} variants={fadeUp} className="pt-2">
             <Button
               variant="ghost"

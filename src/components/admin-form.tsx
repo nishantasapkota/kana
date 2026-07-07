@@ -9,11 +9,31 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Loader2, Database, CheckCircle2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Loader2,
+  Database,
+  CheckCircle2,
+} from "lucide-react";
 
 export function AdminForm() {
-  const { setView, allSentences, fetchSentences, addSentence, deleteSentence, kanaType } = useAppStore();
+  const {
+    setView,
+    allSentences,
+    fetchSentences,
+    addSentence,
+    deleteSentence,
+    kanaType,
+  } = useAppStore();
   const [formKanaType, setFormKanaType] = useState<string>("hiragana");
   const [text, setText] = useState("");
   const [reading, setReading] = useState("");
@@ -44,7 +64,9 @@ export function AdminForm() {
     });
 
     if (missingIndices.length === 0) {
-      alert("Please mark blank positions with ＿ (full-width) or _ (half-width). Example: おは＿ございます");
+      alert(
+        "Please mark blank positions with ＿ (full-width) or _ (half-width). Example: おは＿ございます",
+      );
       return;
     }
 
@@ -81,14 +103,21 @@ export function AdminForm() {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="size-8" onClick={() => setView("landing")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={() => setView("landing")}
+          >
             <ArrowLeft className="size-4" />
           </Button>
           <div className="flex items-center gap-2">
             <Database className="size-4" />
             <h1 className="font-semibold">Manage Sentences</h1>
           </div>
-          <Badge variant="secondary" className="ml-auto">{allSentences.length} total</Badge>
+          <Badge variant="secondary" className="ml-auto">
+            {allSentences.length} total
+          </Badge>
         </div>
       </header>
 
@@ -107,13 +136,24 @@ export function AdminForm() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Kana Type</Label>
-                    <Select value={formKanaType} onValueChange={setFormKanaType}>
+                    <Select
+                      value={formKanaType}
+                      onValueChange={setFormKanaType}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="hiragana">Hiragana ひらがな</SelectItem>
-                        <SelectItem value="katakana">Katakana カタカナ</SelectItem>
+                        <SelectItem value="hiragana">
+                          Hiragana ひらがな
+                        </SelectItem>
+                        <SelectItem value="katakana">
+                          Katakana カタカナ
+                        </SelectItem>
+                        <SelectItem value="numbers">Numbers 0–9</SelectItem>
+                        <SelectItem value="days">
+                          Days 日 月 火 水 木 金 土
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -132,7 +172,8 @@ export function AdminForm() {
                   <Label>
                     Sentence{" "}
                     <span className="text-muted-foreground font-normal">
-                      (use <code className="bg-muted px-1 rounded">＿</code> for blanks)
+                      (use <code className="bg-muted px-1 rounded">＿</code> for
+                      blanks)
                     </span>
                   </Label>
                   <Input
@@ -160,10 +201,7 @@ export function AdminForm() {
                       (one per blank, comma-separated, in order)
                     </span>
                   </Label>
-                  <Input
-                    id="blank-answers"
-                    placeholder="e.g., よ"
-                  />
+                  <Input id="blank-answers" placeholder="e.g., よ" />
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -200,7 +238,11 @@ export function AdminForm() {
                       className="cursor-pointer text-xs"
                       onClick={() => setFilterType(t)}
                     >
-                      {t === "all" ? "All" : t === "hiragana" ? "ひらがな" : "カタカナ"}
+                      {t === "all"
+                        ? "All"
+                        : t === "hiragana"
+                          ? "ひらがな"
+                          : "カタカナ"}
                     </Badge>
                   ))}
                 </div>
@@ -209,7 +251,9 @@ export function AdminForm() {
             <CardContent>
               <div className="max-h-96 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredSentences.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No sentences found.</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No sentences found.
+                  </p>
                 )}
                 {filteredSentences.map((s) => (
                   <div
@@ -218,10 +262,17 @@ export function AdminForm() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant={s.kanaType === "hiragana" ? "default" : "secondary"} className="text-xs shrink-0">
+                        <Badge
+                          variant={
+                            s.kanaType === "hiragana" ? "default" : "secondary"
+                          }
+                          className="text-xs shrink-0"
+                        >
                           {s.kanaType === "hiragana" ? "ひ" : "カ"}
                         </Badge>
-                        <span className="font-medium text-sm truncate">{s.text}</span>
+                        <span className="font-medium text-sm truncate">
+                          {s.text}
+                        </span>
                       </div>
                     </div>
                     <Button
@@ -248,15 +299,26 @@ export function AdminForm() {
 }
 
 /** Extract blank answers from the dedicated input field */
-function blanksFromInput(text: string, missingIndices: number[]): string[] | null {
-  const input = (document.getElementById("blank-answers") as HTMLInputElement)?.value;
+function blanksFromInput(
+  text: string,
+  missingIndices: number[],
+): string[] | null {
+  const input = (document.getElementById("blank-answers") as HTMLInputElement)
+    ?.value;
   if (!input?.trim()) {
-    alert("Please enter the blank answers (comma-separated) in the &quot;Blank Answers&quot; field.");
+    alert(
+      "Please enter the blank answers (comma-separated) in the &quot;Blank Answers&quot; field.",
+    );
     return null;
   }
-  const answers = input.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+  const answers = input
+    .split(/[,，]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (answers.length !== missingIndices.length) {
-    alert(`Expected ${missingIndices.length} blank answer(s) but got ${answers.length}.`);
+    alert(
+      `Expected ${missingIndices.length} blank answer(s) but got ${answers.length}.`,
+    );
     return null;
   }
   return answers;

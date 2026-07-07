@@ -100,6 +100,29 @@ const katakana = [
   { char: "ン", romaji: "n", group: "special" },
 ];
 
+const numbers = [
+  { char: "0", romaji: "zero", group: "digit" },
+  { char: "1", romaji: "one", group: "digit" },
+  { char: "2", romaji: "two", group: "digit" },
+  { char: "3", romaji: "three", group: "digit" },
+  { char: "4", romaji: "four", group: "digit" },
+  { char: "5", romaji: "five", group: "digit" },
+  { char: "6", romaji: "six", group: "digit" },
+  { char: "7", romaji: "seven", group: "digit" },
+  { char: "8", romaji: "eight", group: "digit" },
+  { char: "9", romaji: "nine", group: "digit" },
+];
+
+const days = [
+  { char: "日", romaji: "nichi", group: "day" },
+  { char: "月", romaji: "getsu", group: "day" },
+  { char: "火", romaji: "ka", group: "day" },
+  { char: "水", romaji: "sui", group: "day" },
+  { char: "木", romaji: "moku", group: "day" },
+  { char: "金", romaji: "kin", group: "day" },
+  { char: "土", romaji: "do", group: "day" },
+];
+
 const hiraganaSentences = [
   { text: "おはようございます", reading: "ohayou gozaimasu", meaning: "Good morning", missingIndices: [3], blanks: ["よ"] },
   { text: "こんにちは", reading: "konnichiwa", meaning: "Good afternoon", missingIndices: [2, 4], blanks: ["に", "ち"] },
@@ -167,7 +190,25 @@ async function seed() {
     });
   }
 
-  console.log(`Inserted ${hiragana.length} hiragana + ${katakana.length} katakana`);
+  // Insert numbers
+  for (const k of numbers) {
+    await prisma.kanaCharacter.upsert({
+      where: { char_kanaType: { char: k.char, kanaType: "numbers" } },
+      update: {},
+      create: { ...k, kanaType: "numbers" },
+    });
+  }
+
+  // Insert days
+  for (const k of days) {
+    await prisma.kanaCharacter.upsert({
+      where: { char_kanaType: { char: k.char, kanaType: "days" } },
+      update: {},
+      create: { ...k, kanaType: "days" },
+    });
+  }
+
+  console.log(`Inserted ${hiragana.length} hiragana + ${katakana.length} katakana + ${numbers.length} numbers + ${days.length} days`);
 
   console.log("Seeding sentences...");
 

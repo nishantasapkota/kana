@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type KanaType = "hiragana" | "katakana";
+export type KanaType = "hiragana" | "katakana" | "numbers" | "days";
 export type AppView = "landing" | "character" | "sentence" | "results" | "admin";
 export type QuizDirection = "char-to-romaji" | "romaji-to-char";
 
@@ -132,8 +132,12 @@ async function ensureDataLoaded(type: KanaType) {
         const data = await res.json();
         cachedKana["hiragana"] = (data.characters || []).filter((c: { kanaType: string }) => c.kanaType === "hiragana");
         cachedKana["katakana"] = (data.characters || []).filter((c: { kanaType: string }) => c.kanaType === "katakana");
+        cachedKana["numbers"] = (data.characters || []).filter((c: { kanaType: string }) => c.kanaType === "numbers");
+        cachedKana["days"] = (data.characters || []).filter((c: { kanaType: string }) => c.kanaType === "days");
         cachedSentences["hiragana"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "hiragana");
         cachedSentences["katakana"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "katakana");
+        cachedSentences["numbers"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "numbers");
+        cachedSentences["days"] = (data.sentences || []).filter((s: { kanaType: string }) => s.kanaType === "days");
         staticDataLoaded = true;
         return;
       }

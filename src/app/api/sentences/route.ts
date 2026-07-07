@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
 
   let where: { kanaType?: string } = {};
   if (type && type !== "all") {
-    if (type !== "hiragana" && type !== "katakana") {
-      return NextResponse.json({ error: "Invalid type. Use 'hiragana', 'katakana', or 'all'." }, { status: 400 });
+    if (type !== "hiragana" && type !== "katakana" && type !== "numbers" && type !== "days") {
+      return NextResponse.json({ error: "Invalid type. Use 'hiragana', 'katakana', 'numbers', 'days', or 'all'." }, { status: 400 });
     }
     where = { kanaType: type };
   }
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "All fields are required." }, { status: 400 });
     }
 
-    if (kanaType !== "hiragana" && kanaType !== "katakana") {
-      return NextResponse.json({ error: "kanaType must be 'hiragana' or 'katakana'." }, { status: 400 });
+    if (kanaType !== "hiragana" && kanaType !== "katakana" && kanaType !== "numbers" && kanaType !== "days") {
+      return NextResponse.json({ error: "kanaType must be 'hiragana', 'katakana', 'numbers' or 'days'." }, { status: 400 });
     }
 
     if (!Array.isArray(missingIndices) || !Array.isArray(blanks)) {
